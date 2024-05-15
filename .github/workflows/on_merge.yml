@@ -1,0 +1,146 @@
+name: Automatically tag and release
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (do not include v)
+        required: true
+    tags: none
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  MANUAL_RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
+
+jobs:
+  if_merged:
+    name: Release and tag
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check if there are any changelog updates
+        id: new_version_check
+        run: |
+          git diff --quiet HEAD~1 HEAD CHANGELOG.md || echo "changed=true" >> $GITHUB_OUTPUT
+      - name: Generate the tag
+        id: gen-tag
+        run: |
+          if ${{ steps.new_version_check.outputs.changed == 'true' }}; then
+            cat CHANGELOG.md | grep -E -m 1 '^##\s(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$' | cut -c 4- | sed "s/^/v/" >> tag.txt
+            echo tag=$(cat tag.txt) >> $GITHUB_OUTPUT
+            echo major_tag=$(cat tag.txt | sed "s/\..*//g") >> $GITHUB_OUTPUT
+          elif ${{ env.MANUAL_RELEASE }}; then
+            echo ${{ inputs.version }} >> tag.txt
+            echo tag=v$(cat tag.txt) >> $GITHUB_OUTPUT
+            echo major_tag=v$(cat tag.txt | sed "s/\..*//g") >> $GITHUB_OUTPUT
+          else
+            echo "cannot get tag"
+            exit 1
+          fi
+      - name: Get latest changelog change
+        if: steps.new_version_check.outputs.changed == 'true'
+        run: |
+          cat CHANGELOG.md | awk -v n=1 '/##.*/{l++} l>n{exit} l==n'
+      - name: Get passed changelog version
+        if: env.MANUAL_RELEASE
+        run: |
+          cat CHANGELOG.md | awk '/## ${{ inputs.version }}/{l++} l==1' | awk '/##.*/{l++} l>1{exit} l==1' >> change.txt
+      - name: Check for tag
+        id: tag-check
+        uses: mukunku/tag-exists-action@v1.6.0
+        with:
+          tag: ${{steps.gen-tag.outputs.tag}}
+      - name: Check for major tag
+        id: major-tag-check
+        uses: mukunku/tag-exists-action@v1.6.0
+        with:
+          tag: ${{steps.gen-tag.outputs.major_tag}}
+      - name: Delete previous tag if exists
+        if: ${{ steps.tag-check.outputs.exists == 'true' }}
+        uses: octokit/request-action@v2.x
+        with:
+          route: DELETE /repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/git/refs/tags/${{ steps.gen-tag.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete previous major tag if exists
+        if: ${{ steps.major-tag-check.outputs.exists == 'true' }}
+        uses: octokit/request-action@v2.x
+        with:
+          route: DELETE /repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/git/refs/tags/${{ steps.gen-tag.outputs.major_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push tag to repo
+        if: steps.gen-tag.outcome == 'success'
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{steps.gen-tag.outputs.tag}}',
+              sha: context.sha
+            })
+
+      - name: Push major version tag to repo
+        if: ${{ (steps.gen-tag.outcome == 'success') }}
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{steps.gen-tag.outputs.major_tag}}',
+              sha: context.sha
+            })
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        id: release
+        if: ${{ (env.MANUAL_RELEASE) || (steps.gen-tag.outputs.tag != '') && (steps.new_version_check.outputs.changed == 'true') }}
+        with:
+          tag_name: ${{steps.gen-tag.outputs.tag}}
+          body_path: change.txt
+          make_latest: true
+      # - name: Release Major Version
+      #   uses: softprops/action-gh-release@v2
+      #   id: release-major
+      #   if: ${{ (env.MANUAL_RELEASE) || (steps.gen-tag.outputs.major_tag != '') && (steps.new_version_check.outputs.changed == 'true') }}
+      #   with:
+      #     tag_name: ${{steps.gen-tag.outputs.major_tag}}
+      #     body_path: change.txt
+      #     make_latest: true
+      # - name: Release secretparse linux/amd64
+      #   if: ${{ (env.MANUAL_RELEASE) || (steps.gen-tag.outcome == 'success') }}
+      #   uses: wangyoucao577/go-release-action@v1
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     goos: linux
+      #     goarch: amd64
+      #     project_path: src
+      #     binary_name: secretparse
+      #     ldflags: -w -s
+      #     release_tag: ${{steps.gen-tag.outputs.major_tag}}
+      - name: Login to GitHub Packages
+        if: steps.release.outcome == 'success'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.release.outcome == 'success'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}:latest, ${{ env.REGISTRY }}/${{ github.repository }}:${{steps.gen-tag.outputs.tag}}, ${{ env.REGISTRY }}/${{ github.repository }}:${{steps.gen-tag.outputs.major_tag}}

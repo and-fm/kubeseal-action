@@ -1,0 +1,18 @@
+name: "Kubeseal Action"
+branding:
+  icon: "lock"
+  color: "blue"
+description: "Encrypts k8s secrets with your sealed secrets public key"
+inputs:
+  pem_url:
+    description: The url to your sealed secrets public key
+    required: true
+  secrets_yaml:
+    description: Input secret yaml to seal
+    required: true
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - ${{ inputs.pem_url }}
+    - ${{ inputs.secrets_yaml }}
