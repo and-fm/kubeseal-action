@@ -9,7 +9,7 @@ if [ -z "$KUBESEAL_VERSION" ]; then
     exit 1
 fi
 
-curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz" -o /bin/kubeseal
+curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$KUBESEAL_VERSION/kubeseal-$KUBESEAL_VERSION-linux-amd64.tar.gz" -o /bin/kubeseal
 chmod +x /bin/kubeseal
 
 echo "$2" >> secret.yaml
