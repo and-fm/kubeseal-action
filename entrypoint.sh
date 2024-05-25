@@ -9,6 +9,8 @@ if [ -z "$KUBESEAL_VERSION" ]; then
     exit 1
 fi
 
+echo $KUBESEAL_VERSION
+
 curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$KUBESEAL_VERSION/kubeseal-$KUBESEAL_VERSION-linux-amd64.tar.gz" -o /bin/kubeseal
 chmod +x /bin/kubeseal
 
