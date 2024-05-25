@@ -19,6 +19,11 @@ The following outputs can be accessed with steps.\<step-id\>.outputs.out_yaml :
 | ---------- | -------- | -------------------------------- |
 | `out_yaml` | K8s Yaml | The resulting sealed secret yaml |
 
+## Contributions
+
+Any help keeping this repo healthy and secure would be appreciated! \
+When submitting a PR, please bump the version in `CHANGELOG.md` with your changes according to semantic versioning rules. There is a merged PR workflow that will automatically tag and release this Github action based on the changelog file.
+
 ## Workflows
 
 Branch protection rules require a PR before code can be merged into _main_. There are two PR workflows:
@@ -28,14 +33,10 @@ Branch protection rules require a PR before code can be merged into _main_. Ther
 
 A successful merge into _main_ will update the _latest_ release and update the _latest_ tagged container image uploaded to GitHub Packages.
 
-## Contributions
-
-Any help keeping this repo healthy and secure would be appreciated! \
-Remaining in the to-do is automating semantic version releases in case users need to rollback to older, stable versions.
-
 ## Usage
 
-Here is an example deploy.yaml file to generate a sealed secret from some secrets.
+Here is an example deploy.yaml file to generate a sealed secret from some secrets.  
+I currently implement this in my organization by exposing the sealed secrets controller's endpoint for the cert.pem file which is needed to seal secrets with this action. It's also the most secure way to do so.
 
 ```yaml
 name: Create a secret
