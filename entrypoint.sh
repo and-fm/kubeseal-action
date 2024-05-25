@@ -2,7 +2,7 @@
 
 echo "$2" >> secret.yaml
 
-echo $(cat /bin/kubeseal)
+cat /bin/kubeseal
 
 kubeseal --cert $1 -f secret.yaml -w sealed-secret.yaml
 
