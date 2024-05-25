@@ -9,6 +9,8 @@ RUN KUBESEAL_VERSION=$(curl -s https://api.github.com/repos/bitnami-labs/sealed-
 RUN curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$KUBESEAL_VERSION/kubeseal-$KUBESEAL_VERSION-linux-amd64.tar.gz" -o /bin/kubeseal
 RUN chmod +x /bin/kubeseal
 
+RUN cat /bin/kubeseal
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
