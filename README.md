@@ -35,8 +35,7 @@ Remaining in the to-do is automating semantic version releases in case users nee
 
 ## Usage
 
-Here is an example deploy.yaml file to generate a generic secret from some secrets.  
-For generating a plain text insecure configmap, just pass your name value pairs into `configmap_env` instead of `secrets`
+Here is an example deploy.yaml file to generate a sealed secret from some secrets.
 
 ```yaml
 name: Create a secret
@@ -48,14 +47,22 @@ jobs:
     steps:
       - name: Generate secret via kubectl
         uses: and-fm/k8s-yaml-action@main
-        id: gen
+        id: gen-secret
         with:
           name: test-secrets
           namespace: test-dev
           secrets: |-
             SECRET_1:${{ secrets.SECRET_1 }}
             SECRET_2:${{ secrets.SECRET_2 }}
+      - name: Seal secrets
+        uses: and-fm/kubeseal-action@main
+        id: seal-secret
+        with:
+          pem_url: https://sealer.yourname.com/v1/cert.pem
+          secrets_yaml: ${{ steps.gen-secret.outputs.out_yaml }}
       - name: get secrets
         run: |
-          echo "${{ steps.gen.outputs.out_yaml }}"
+          echo "${{ steps.seal-secret.outputs.out_yaml }}"
+      # You can do something sensible here like push them
+      # To an infra repository managed by ArgoCD or FluxCD
 ```
