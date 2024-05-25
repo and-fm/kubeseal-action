@@ -12,13 +12,9 @@ fi
 curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$KUBESEAL_VERSION/kubeseal-$KUBESEAL_VERSION-linux-amd64.tar.gz" -o /bin/kubeseal
 chmod +x /bin/kubeseal
 
-curl -L "$1" -o cert.pem
-
-echo $(cat cert.pem)
-
 echo "$2" >> secret.yaml
 
-kubeseal --cert cert.pem -f secret.yaml -w sealed-secret.yaml
+kubeseal --cert $1 -f secret.yaml -w sealed-secret.yaml
 
 echo 'out_yaml<<EOF' >> $GITHUB_OUTPUT
 cat sealed-secret.yaml >> $GITHUB_OUTPUT
