@@ -2,6 +2,8 @@
 
 echo "$2" >> secret.yaml
 
+echo $(cat /bin/kubeseal)
+
 kubeseal --cert $1 -f secret.yaml -w sealed-secret.yaml
 
 echo 'out_yaml<<EOF' >> $GITHUB_OUTPUT
