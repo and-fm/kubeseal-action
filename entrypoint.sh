@@ -12,8 +12,6 @@ fi
 curl -L "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$KUBESEAL_VERSION/kubeseal-$KUBESEAL_VERSION-linux-amd64.tar.gz" -o /bin/kubeseal
 chmod +x /bin/kubeseal
 
-echo "$(cat /bin/kubeseal)"
-
 echo "$2" >> secret.yaml
 
 kubeseal --cert $1 -f secret.yaml -w sealed-secret.yaml
