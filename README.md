@@ -46,16 +46,22 @@ jobs:
     name: Create secret
     runs-on: ubuntu-latest
     steps:
-      - name: Generate secret via kubectl
+      - name: Generate secrets
         uses: and-fm/k8s-yaml-action@main
-        id: gen
+        id: gen-secret
         with:
-          name: test-secrets
-          namespace: test-dev
+          name: ${{ env.SECRET_NAME }}-secret
+          namespace: cluster-dev
           secrets: |-
-            SECRET_1:${{ secrets.SECRET_1 }}
-            SECRET_2:${{ secrets.SECRET_2 }}
+            secret:${{ secrets.BIG_SECRET }}
+            secret2:${{ secrets.BIG_SECRET2 }}
+      - name: Seal secrets
+        uses: and-fm/kubeseal-action@main
+        id: seal-secret
+        with:
+          pem_url: https://cluster.com/v1/cert.pem
+          secrets_yaml: ${{ steps.gen-secret.outputs.out_yaml }}
       - name: get secrets
         run: |
-          echo "${{ steps.gen.outputs.out_yaml }}"
+          echo "${{ steps.seal-secret.outputs.out_yaml }}"
 ```
