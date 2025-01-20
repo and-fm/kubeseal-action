@@ -1,4 +1,4 @@
-FROM alpine/k8s:1.31.2
+FROM alpine/k8s:1.32.1
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
